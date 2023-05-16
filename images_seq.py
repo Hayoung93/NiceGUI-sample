@@ -65,10 +65,10 @@ with ui.element('div').classes('justify-center p-2 bg-blue-100 w-full'):
     ui.input(label="1. Input path of image directory (default: {}).".format(imgs_root), on_change=lambda e: label_inputDir.set_text(e.value)).classes("w-full text-sm")
 
     label_inputModelS = ui.label().classes("invisible")
-    ui.input(label="2. Input DOMAIN model path (default: {}).".format(model_source), on_change=lambda e: label_inputModelS.set_text(e.value)).classes("w-full text-sm")
+    ui.input(label="2. Input SOURCE model path (default: {}).".format(model_source), on_change=lambda e: label_inputModelS.set_text(e.value)).classes("w-full text-sm")
 
     label_inputModelD = ui.label().classes("invisible")
-    ui.input(label="3. Input SOURCE model path (default: {}).".format(model_domain), on_change=lambda e: label_inputModelD.set_text(e.value)).classes("w-full text-sm")
+    ui.input(label="3. Input DOMAIN model path (default: {}).".format(model_domain), on_change=lambda e: label_inputModelD.set_text(e.value)).classes("w-full text-sm")
 
     with ui.row().classes("no-wrap align-middle pt-3"):
         ui.label("You can also upload a single image file manually :").classes("mt-2")
