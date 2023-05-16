@@ -46,16 +46,12 @@ def viz(model_fp_s, model_fp_d, img_fp, output_dir):
     # logits_d = torch.stack([output_d['pred_logits'][0][i] for i in indices_d]).unsqueeze(0)
 
     fp_s = os.path.join(out_s, f'img_{time.time()}.jpg')
-    fig, ax = plt.subplots(1, figsize=(10,3), dpi=200)
-    plot_prediction(samples[0:1], predictied_boxes_s, logits_s, ax, plot_prob=False)
-    ax.set_aspect('equal')
-    ax.set_axis_off()
-    fig.savefig(fp_s, bbox_inches='tight')
-    plt.close()
+    out_img_s = compute_boxes(img, output_s)
 
     fp_d = os.path.join(out_d, f'img_{time.time()}.jpg')
     out_img_d = compute_boxes(img, output_d)
 
+    cv2.imwrite(fp_s, out_img_s)
     cv2.imwrite(fp_d, out_img_d)
     
     return fp_s, fp_d
