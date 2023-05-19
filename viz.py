@@ -12,83 +12,39 @@ from collections import Counter, OrderedDict
 
 
 @torch.no_grad()
-def viz(model_fp_s, model_fp_d, img_fp, output_dir):
-
-    out_s = os.path.join(output_dir, "source")
-    out_d = os.path.join(output_dir, "domain")
-    os.makedirs(out_s, exist_ok=True)
-    os.makedirs(out_d, exist_ok=True)
-
+def viz(model_paths, output_dir_names, img_fp, static_root):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model_s = get_model()
-    model_s.eval()
-    model_s.to(device)
-    model_s.load_state_dict(torch.load(model_fp_s)["model"])
-    model_d = get_model()
-    model_d.eval()
-    model_d.to(device)
-    model_d.load_state_dict(torch.load(model_fp_d)["model"])
+
+    output_dir_paths = []
+    for dname in output_dir_names:
+        out_path = os.path.join(static_root, dname)
+        output_dir_paths.append(out_path)
+        os.makedirs(out_path, exist_ok=True)
+
+    models = []
+    for model_path in model_paths:
+        model = get_model()
+        model.eval()
+        model.to(device)
+        model.load_state_dict(torch.load(model_path)["model"])
+        models.append(model)
 
     transform = get_transform()
     img = Image.open(img_fp)
     img_tensor = transform(img).unsqueeze(0)
 
     samples = img_tensor.to(device)
-    top_k = 10
 
-    output_s = model_s(samples)
-    output_d = model_d(samples)
-    indices_s = output_s['pred_logits'][0].softmax(-1)[..., 1].sort(descending=True)[1][:top_k]
-    # indices_d = output_d['pred_logits'][0].softmax(-1)[..., 1].sort(descending=True)[1][:top_k]
-    predictied_boxes_s = torch.stack([output_s['pred_boxes'][0][i] for i in indices_s]).unsqueeze(0)
-    # predictied_boxes_d = torch.stack([output_d['pred_boxes'][0][i] for i in indices_d]).unsqueeze(0)
-    logits_s = torch.stack([output_s['pred_logits'][0][i] for i in indices_s]).unsqueeze(0)
-    # logits_d = torch.stack([output_d['pred_logits'][0][i] for i in indices_d]).unsqueeze(0)
+    output_filepaths = []
+    for out_dir, model in zip(output_dir_paths, models):
+        output = model(samples)
+        out_path = os.path.join(out_dir, f'res_{img_fp.split("/")[-1].replace(".png", "")}.jpg')
+        out_img = compute_boxes(img, output)
+        cv2.imwrite(out_path, out_img)
+        output_filepaths.append(out_path)
 
-    fp_s = os.path.join(out_s, f'img_{time.time()}.jpg')
-    out_img_s = compute_boxes(img, output_s)
+    return output_filepaths
 
-    fp_d = os.path.join(out_d, f'img_{time.time()}.jpg')
-    out_img_d = compute_boxes(img, output_d)
-
-    cv2.imwrite(fp_s, out_img_s)
-    cv2.imwrite(fp_d, out_img_d)
-    
-    return fp_s, fp_d
-
-def rescale_bboxes(out_bbox, size):
-    img_w, img_h = size
-    b = box_cxcywh_to_xyxy(out_bbox)
-    b = b * torch.tensor([img_w, img_h, img_w, img_h], dtype=torch.float32).to(out_bbox)
-    return b
-
-def plot_prediction(image, boxes, logits, ax=None, plot_prob=True):
-    bboxes_scaled0 = rescale_bboxes(boxes[0], list(image.shape[2:])[::-1])
-    probas = logits.softmax(-1)[0, :, :-1]
-    keep = probas.max(-1).values > 0.01
-    if ax is None:
-        ax = plt.gca()
-    plot_results(image[0].permute(1, 2, 0).detach().cpu().numpy(), probas[keep], bboxes_scaled0[keep], ax, plot_prob=plot_prob)
-
-def plot_results(pil_img, prob, boxes, ax, plot_prob=True, norm=True):
-    from matplotlib import pyplot as plt
-    image = plot_image(ax, pil_img, norm)
-    if prob is not None and boxes is not None:
-        for p, (xmin, ymin, xmax, ymax) in zip(prob, boxes.tolist()):
-            ax.add_patch(plt.Rectangle((xmin, ymin), xmax - xmin, ymax - ymin,
-                                       fill=False, color='r', linewidth=1))
-            if plot_prob:
-                text = f'{p:0.2f}'
-                ax.text(xmin, ymin, text, fontsize=15,
-                        bbox=dict(facecolor='yellow', alpha=0.5))
-    ax.grid('off')
-
-def plot_image(ax, img, norm):
-    if norm:
-        img = img * np.array([0.229, 0.224, 0.225]) + np.array([0.485, 0.456, 0.406])
-        img = (img * 255)
-    img = img.astype('uint8')
-    ax.imshow(img)
 
 def box_cxcywh_to_xyxy(x):
     x_c, y_c, w, h = x.unbind(-1)
@@ -131,7 +87,7 @@ def compute_boxes(input_image, output_dict):
     mean_p_class = []
     len_th = 70
     for m_class in sorted_dict: 
-        print (m_class, sorted_dict[m_class])
+        print(f"Class no.: {m_class}, Count: {sorted_dict[m_class]}")
         if sorted_dict[m_class] > len_th:
             used_classes.append(m_class)
             idx = predicted_ == m_class
@@ -192,7 +148,7 @@ def draw_boxes(boxes, labels, scores, image, th, used_classes, mean_p_class ):
                             cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2,
                             lineType=cv2.LINE_AA)
 
-    print('{:d}'.format(num_boxes))
+    print('No. bboxes: {:d}'.format(num_boxes))
     return img_det_bgr
 
 

@@ -48,7 +48,7 @@ def perform_detection():
     global img_fp_s
     global img_fp_d
     # print(img_fp_s, img_fp_d)
-    img_fp_s, img_fp_d = viz(model_source, model_domain, img_fp, static_root)
+    img_fp_s, img_fp_d = viz([model_source, model_domain], ["source", "domain"], img_fp, static_root)
     holder_before.source = img_fp_s
     holder_after.source = img_fp_d
 
